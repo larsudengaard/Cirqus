@@ -45,7 +45,7 @@ namespace d60.Cirqus.TsClient
 
 where <path-to-DLL> should point to an assembly containing all of your commands,
 and <output-directory> should be the directory in which you want the generated
-'commands.ts' and 'commandProcessor.ts' to be put.");
+'commands.ts','commandProcessor.ts', 'views.ts' and 'common.ts' to be put.");
             }
 
             var sourceDll = args[0];
