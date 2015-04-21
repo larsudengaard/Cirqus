@@ -41,6 +41,8 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Configuration\Configuration.cs" />
+    <Compile Include="Configuration\TsClientConfigurator.cs" />
     <Compile Include="Generation\IWriter.cs" />
     <Compile Include="Model\BuiltInTypeDef.cs" />
     <Compile Include="Model\ProxyGeneratorContext.cs" />
@@ -68,6 +70,7 @@
       <Name>d60.Cirqus</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

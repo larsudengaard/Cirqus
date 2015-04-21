@@ -3,7 +3,8 @@
     enum TypeType
     {
         Command = 0,
-        Other = 1,
-        Primitive = 2,
+        View = 1,
+        Other = 2,
+        Primitive = 3,
     }
 }

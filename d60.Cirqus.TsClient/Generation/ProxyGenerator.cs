@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using d60.Cirqus.TsClient.Configuration;
 using d60.Cirqus.TsClient.Model;
 
 namespace d60.Cirqus.TsClient.Generation
@@ -10,12 +11,12 @@ namespace d60.Cirqus.TsClient.Generation
     class ProxyGenerator
     {
         readonly IWriter _writer;
-        readonly List<string> _sourceDlls = new List<string>();
+        readonly string _sourceDll;
 
         public ProxyGenerator(string sourceDll, IWriter writer)
         {
             _writer = writer;
-            _sourceDlls.Add(sourceDll);
+            _sourceDll = sourceDll;
         }
 
         public List<ProxyGenerationResult> Generate()
@@ -25,25 +26,42 @@ namespace d60.Cirqus.TsClient.Generation
 
         IEnumerable<ProxyGenerationResult> GetProxyGenerationResults()
         {
-            var commandTypes = _sourceDlls
-                .Select(LoadAssembly)
-                .SelectMany(GetTypes)
-                .Where(ProxyGeneratorContext.IsCommand)
-                .ToList();
+            var assembly = LoadAssembly(_sourceDll);
+            var allTypes = GetTypes(assembly);
+
+            var configurators = allTypes.Where(x => typeof (TsClientConfigurator).IsAssignableFrom(x)).ToList();
+            if (configurators.Count > 1)
+            {
+                throw new PrettyException("Found multiple configurations in command assembly, only one is supported.");
+            }
+
+            var configuration = new Configuration.Configuration();
+            if (configurators.Count == 1)
+            {
+                var configuratorType = configurators.Single();
+                var configurator = (TsClientConfigurator) Activator.CreateInstance(configuratorType);
+                configuration = configurator.Configure();
+            }
+
+            var commandTypes = allTypes.Where(ProxyGeneratorContext.IsCommand).ToList();
+            var viewTypes = allTypes.Where(ProxyGeneratorContext.IsView).ToList();
 
             _writer.Print("Found {0} command types", commandTypes.Count);
+            _writer.Print("Found {0} view types", viewTypes.Count);
 
-            var commandsFileName = string.Format("commands.ts");
-            var commandProcessorFileName = string.Format("commandProcessor.ts");
+            var context = new ProxyGeneratorContext(commandTypes.Concat(viewTypes), configuration);
+            
+            var commandCode = context.GetDefinitions(TypeType.Command);
+            yield return new ProxyGenerationResult("commands.ts", _writer, commandCode);
 
-            var context = new ProxyGeneratorContext(commandTypes);
-            var code = context.GetCommandDefinitations();
+            var viewCode = context.GetDefinitions(TypeType.View);
+            yield return new ProxyGenerationResult("views.ts", _writer, viewCode);
 
-            yield return new ProxyGenerationResult(commandsFileName, _writer, code);
+            var commonCode = context.GetDefinitions(TypeType.Other, TypeType.Primitive);
+            yield return new ProxyGenerationResult("common.ts", _writer, commonCode);
 
-            var moreCode = context.GetCommandProcessorDefinitation();
-
-            yield return new ProxyGenerationResult(commandProcessorFileName, _writer, moreCode);
+            var commandProcessorCode = context.GetCommandProcessorDefinitation();
+            yield return new ProxyGenerationResult("commandProcessor.ts", _writer, commandProcessorCode);
         }
 
         Type[] GetTypes(Assembly assembly)
@@ -69,7 +87,7 @@ namespace d60.Cirqus.TsClient.Generation
             try
             {
                 _writer.Print("Loading DLL {0}", filePath);
-                return Assembly.LoadFile(Path.GetFullPath(filePath));
+                return Assembly.LoadFrom(Path.GetFullPath(filePath));
             }
             catch (BadImageFormatException exception)
             {

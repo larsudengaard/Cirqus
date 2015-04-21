@@ -7,7 +7,8 @@ namespace d60.Cirqus.TsClient.Model
         readonly string _code;
         readonly string _fullyQualifiedTsTypeName;
 
-        public BuiltInTypeDef(Type type, string code, string fullyQualifiedTsTypeName) : base(new QualifiedClassName(type), Model.TypeType.Primitive)
+        public BuiltInTypeDef(Type type, string code, string fullyQualifiedTsTypeName) 
+            : base(new QualifiedClassName(type), TypeType.Primitive)
         {
             Type = type;
             _code = code;

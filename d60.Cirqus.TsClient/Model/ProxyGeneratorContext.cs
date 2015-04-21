@@ -3,23 +3,23 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Remoting;
 using System.Text;
 using d60.Cirqus.Commands;
 using d60.Cirqus.Numbers;
+using d60.Cirqus.Views.ViewManagers;
 
 namespace d60.Cirqus.TsClient.Model
 {
     class ProxyGeneratorContext
     {
+        readonly Configuration.Configuration _configuration;
         readonly Dictionary<Type, TypeDef> _types = new Dictionary<Type, TypeDef>();
 
-        public ProxyGeneratorContext()
-            : this(Enumerable.Empty<Type>())
+        public ProxyGeneratorContext(IEnumerable<Type> types, Configuration.Configuration configuration)
         {
-        }
+            _configuration = configuration;
 
-        public ProxyGeneratorContext(IEnumerable<Type> types)
-        {
             AddBuiltInType(new BuiltInTypeDef(typeof(bool), "", "boolean"));
 
             AddBuiltInType(new BuiltInTypeDef(typeof(short), "", "number"));
@@ -109,13 +109,39 @@ namespace d60.Cirqus.TsClient.Model
 
         TypeDef CreateTypeDef(QualifiedClassName qualifiedClassName, Type type)
         {
+            var builtInTypeConfigurations = _configuration
+                .BuiltInTypes
+                .Where(x => x.IsForType(type))
+                .ToList();
+
+            if (builtInTypeConfigurations.Any())
+            {
+                if (builtInTypeConfigurations.Count > 1)
+                    throw new PrettyException(string.Format("Found multiple built-in-type configurations for type {0}", type));
+
+                var builtInTypeConfiguration = _configuration.BuiltInTypes.Single(x => x.IsForType(type));
+                var builtInTypeDef = new BuiltInTypeDef(type, "", builtInTypeConfiguration.TsType);
+                AddBuiltInType(builtInTypeDef);
+                
+                return builtInTypeDef;
+            }
+
             var typeDef = IsCommand(type)
-                ? new TypeDef(qualifiedClassName, GetTypeFor(typeof(Command)), TypeType.Command, type)
-                : new TypeDef(qualifiedClassName, TypeType.Other);
+                ? new TypeDef(qualifiedClassName, GetTypeFor(typeof (Command)), TypeType.Command, type)
+                : IsView(type)
+                    ? new TypeDef(qualifiedClassName, TypeType.View)
+                    : new TypeDef(qualifiedClassName, TypeType.Other);
 
             _types[type] = typeDef;
 
-            foreach (var property in GetAllProperties(type))
+            var ignoredProperties = _configuration
+                .IgnoredProperties
+                .Where(x => x.IsForType(type))
+                .Select(x => x.PropertyName)
+                .ToList();
+
+            var properties = GetAllProperties(type).Where(x => !ignoredProperties.Contains(x.Name));
+            foreach (var property in properties)
             {
                 var propertyDef =
                     new PropertyDef(GetOrCreateTypeDef(new QualifiedClassName(property.PropertyType), property.PropertyType),
@@ -129,7 +155,7 @@ namespace d60.Cirqus.TsClient.Model
             return typeDef;
         }
 
-        IEnumerable<PropertyInfo> GetAllProperties(Type type)
+        public static IEnumerable<PropertyInfo> GetAllProperties(Type type)
         {
             return type.GetProperties(BindingFlags.Instance | BindingFlags.Public);
         }
@@ -188,11 +214,12 @@ namespace d60.Cirqus.TsClient.Model
             return char.ToLower(name[0]) + name.Substring(1);
         }
 
-        public string GetCommandDefinitations()
+        public string GetDefinitions(params TypeType[] typeTypes)
         {
             var builder = new StringBuilder();
 
             var typeGroups = _types.Values
+                .Where(x => typeTypes.Contains(x.TypeType))
                 .GroupBy(t => t.TypeType)
                 .OrderBy(g => g.Key)
                 .ToList();
@@ -204,7 +231,7 @@ namespace d60.Cirqus.TsClient.Model
                 foreach (var type in typeGroup)
                 {
                     var code = type.GetCode(this);
-                    if (String.IsNullOrWhiteSpace(code)) continue;
+                    if (string.IsNullOrWhiteSpace(code)) continue;
 
                     builder.AppendLine(code);
                     builder.AppendLine();
@@ -222,6 +249,9 @@ namespace d60.Cirqus.TsClient.Model
             {
                 case TypeType.Command:
                     return "Domain commands";
+
+                case TypeType.View:
+                    return "Domain views";
 
                 case TypeType.Other:
                     return "Domain primitives";
@@ -248,21 +278,16 @@ namespace d60.Cirqus.TsClient.Model
 
         public static bool IsCommand(Type type)
         {
-            if (type.IsAbstract) return false;
-            if (type.IsInterface) return false;
-
-            return HasCommandBaseClass(type);
+            return !type.IsInterface &&
+                   !type.IsAbstract &&
+                   typeof (Command).IsAssignableFrom(type);
         }
 
-        static bool HasCommandBaseClass(Type type)
+        public static bool IsView(Type type)
         {
-            var baseType = type.BaseType;
-            if (baseType == null) return false;
-
-            if (baseType.Namespace == "d60.Cirqus.Commands" && baseType.Name == "Command")
-                return true;
-
-            return HasCommandBaseClass(baseType);
+            return !type.IsInterface &&
+                   !type.IsAbstract &&
+                   typeof(IViewInstance).IsAssignableFrom(type);
         }
     }
 }
