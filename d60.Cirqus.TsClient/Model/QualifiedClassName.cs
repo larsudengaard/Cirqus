@@ -6,7 +6,11 @@ namespace d60.Cirqus.TsClient.Model
     {
         public QualifiedClassName(Type type)
         {
-            Ns = type.Namespace;
+            Ns = type.Namespace +
+                 (type.IsNested
+                     ? "." + type.DeclaringType.Name
+                     : "");
+
             Name = type.Name;
         }
 
