@@ -109,18 +109,18 @@ namespace d60.Cirqus.TsClient.Model
 
         TypeDef CreateTypeDef(QualifiedClassName qualifiedClassName, Type type)
         {
-            var builtInTypeConfigurations = _configuration
-                .BuiltInTypes
+            var builtInTypeUsageConfigurations = _configuration
+                .BuiltInTypeUsages
                 .Where(x => x.IsForType(type))
                 .ToList();
 
-            if (builtInTypeConfigurations.Any())
+            if (builtInTypeUsageConfigurations.Any())
             {
-                if (builtInTypeConfigurations.Count > 1)
+                if (builtInTypeUsageConfigurations.Count > 1)
                     throw new PrettyException(string.Format("Found multiple built-in-type configurations for type {0}", type));
 
-                var builtInTypeConfiguration = _configuration.BuiltInTypes.Single(x => x.IsForType(type));
-                var builtInTypeDef = new BuiltInTypeDef(type, "", builtInTypeConfiguration.TsType);
+                var builtInTypeUsageConfiguration = _configuration.BuiltInTypeUsages.Single(x => x.IsForType(type));
+                var builtInTypeDef = new BuiltInTypeDef(type, "", builtInTypeUsageConfiguration.TsType);
                 AddBuiltInType(builtInTypeDef);
                 
                 return builtInTypeDef;
@@ -199,7 +199,7 @@ namespace d60.Cirqus.TsClient.Model
         }
     }
 
-    private g() {
+    private static g() {
         return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
     }
 }");

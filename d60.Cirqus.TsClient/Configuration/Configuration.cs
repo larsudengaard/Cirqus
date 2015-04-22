@@ -7,21 +7,21 @@ namespace d60.Cirqus.TsClient.Configuration
     public class Configuration
     {
         public List<IgnoredPropertyConfiguration> IgnoredProperties { get; private set; }
-        public List<BuiltInTypeConfiguration> BuiltInTypes { get; private set; }
+        public List<BuiltInTypeUsageConfiguration> BuiltInTypeUsages { get; private set; }
 
         internal Configuration()
         {
             IgnoredProperties = new List<IgnoredPropertyConfiguration>();
-            BuiltInTypes = new List<BuiltInTypeConfiguration>();
+            BuiltInTypeUsages = new List<BuiltInTypeUsageConfiguration>();
         }
 
-        public class BuiltInTypeConfiguration
+        public class BuiltInTypeUsageConfiguration
         {
             readonly Func<Type, bool> _predicate;
 
             public string TsType { get; private set; }
 
-            public BuiltInTypeConfiguration(Func<Type, bool> predicate, string tsType)
+            public BuiltInTypeUsageConfiguration(Func<Type, bool> predicate, string tsType)
             {
                 TsType = tsType;
                 _predicate = predicate;

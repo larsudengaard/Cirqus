@@ -26,7 +26,7 @@ namespace d60.Cirqus.TsClient.Configuration
 
         public void UseBuiltInType(Func<Type, bool> predicate, string tsType)
         {
-            _configuration.BuiltInTypes.Add(new Configuration.BuiltInTypeConfiguration(predicate, tsType));
+            _configuration.BuiltInTypeUsages.Add(new Configuration.BuiltInTypeUsageConfiguration(predicate, tsType));
         }
 
         static PropertyInfo GetPropertyInfo<TSource, TProperty>(Expression<Func<TSource, TProperty>> propertyExpression)
