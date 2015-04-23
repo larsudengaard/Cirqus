@@ -50,18 +50,19 @@ namespace d60.Cirqus.TsClient.Generation
             _writer.Print("Found {0} view types", viewTypes.Count);
 
             var context = new ProxyGeneratorContext(commandTypes.Concat(viewTypes), configuration);
-            
-            var commandCode = context.GetDefinitions(TypeType.Command);
-            yield return new ProxyGenerationResult("commands.ts", _writer, commandCode);
-
-            var viewCode = context.GetDefinitions(TypeType.View);
-            yield return new ProxyGenerationResult("views.ts", _writer, viewCode);
 
             var commonCode = context.GetDefinitions(TypeType.Other, TypeType.Primitive);
             yield return new ProxyGenerationResult("common.ts", _writer, commonCode);
+            
+            var commandCode = context.GetDefinitions(TypeType.Command);
+            yield return new ProxyGenerationResult("commands.ts", _writer, commandCode, "common");
+
+            var viewCode = context.GetDefinitions(TypeType.View);
+            yield return new ProxyGenerationResult("views.ts", _writer, viewCode, "common");
 
             var commandProcessorCode = context.GetCommandProcessorDefinitation();
-            yield return new ProxyGenerationResult("commandProcessor.ts", _writer, commandProcessorCode);
+
+            yield return new ProxyGenerationResult("commandProcessor.ts", _writer, commandProcessorCode, "common", "commands");
         }
 
         Type[] GetTypes(Assembly assembly)

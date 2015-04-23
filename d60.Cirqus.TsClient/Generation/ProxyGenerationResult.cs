@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -12,12 +14,14 @@ namespace d60.Cirqus.TsClient.Generation
         readonly string _filename;
         readonly IWriter _writer;
         readonly string _code;
+        readonly string[] _dependencies;
 
-        public ProxyGenerationResult(string filename, IWriter writer, string code)
+        public ProxyGenerationResult(string filename, IWriter writer, string code, params string[] dependencies)
         {
             _filename = filename;
             _writer = writer;
             _code = code;
+            _dependencies = dependencies;
         }
 
         public void WriteTo(string destinationDirectory)
@@ -32,7 +36,24 @@ namespace d60.Cirqus.TsClient.Generation
 
             _writer.Print("    Writing {0}", destinationFilePath);
             var header = string.Format(HeaderTemplate, HashPrefix, GetHash());
-            File.WriteAllText(destinationFilePath, header + Environment.NewLine + Environment.NewLine + _code, Encoding);
+            
+            var output = new StringBuilder();
+            output.Append(header);
+            output.AppendLine("");
+            output.AppendLine("");
+
+            if (_dependencies.Any())
+            {
+                var imports = _dependencies.Select(x => string.Format("import {0} = require('{0}');", x));
+
+                output.Append(string.Join(Environment.NewLine, imports));
+                output.AppendLine("");
+                output.AppendLine("");
+            }
+
+            output.AppendLine(_code);
+
+            File.WriteAllText(destinationFilePath, output.ToString(), Encoding);
         }
 
         string GetHash()

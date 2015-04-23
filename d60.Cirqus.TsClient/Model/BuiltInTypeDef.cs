@@ -7,8 +7,8 @@ namespace d60.Cirqus.TsClient.Model
         readonly string _code;
         readonly string _fullyQualifiedTsTypeName;
 
-        public BuiltInTypeDef(Type type, string code, string fullyQualifiedTsTypeName) 
-            : base(new QualifiedClassName(type), TypeType.Primitive)
+        public BuiltInTypeDef(Type type, string code, string fullyQualifiedTsTypeName, bool isSystemType = true) 
+            : base(new QualifiedClassName(type), TypeType.Primitive, isSystemType)
         {
             Type = type;
             _code = code;
@@ -17,7 +17,12 @@ namespace d60.Cirqus.TsClient.Model
 
         public override string FullyQualifiedTsTypeName
         {
-            get { return _fullyQualifiedTsTypeName; }
+            get
+            {
+                return IsSystemType
+                    ? _fullyQualifiedTsTypeName
+                    : "common." + _fullyQualifiedTsTypeName;
+            }
         }
 
         public override string GetCode(ProxyGeneratorContext context)

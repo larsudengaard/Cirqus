@@ -4,6 +4,7 @@
     {
         readonly TypeDef _type;
         readonly string _name;
+        private readonly string _tsModule;
 
         public PropertyDef(TypeDef type, string name)
         {

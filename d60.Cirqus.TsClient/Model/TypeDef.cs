@@ -9,18 +9,20 @@ namespace d60.Cirqus.TsClient.Model
         readonly TypeDef _baseType;
         readonly List<PropertyDef> _properties = new List<PropertyDef>();
 
-        public TypeDef(QualifiedClassName name, TypeType typeType)
+        public TypeDef(QualifiedClassName name, TypeType typeType, bool isSystemType = false)
+            : this(name, typeType, null, null, isSystemType)
         {
             Name = name;
             TypeType = typeType;
         }
 
-        public TypeDef(QualifiedClassName name, TypeDef baseType, TypeType typeType, Type type)
+        public TypeDef(QualifiedClassName name, TypeType typeType, TypeDef baseType, Type type, bool isSystemType = false)
         {
             _baseType = baseType;
             Name = name;
             TypeType = typeType;
             Type = type;
+            IsSystemType = isSystemType;
         }
 
         public QualifiedClassName Name { get; private set; }
@@ -42,7 +44,12 @@ namespace d60.Cirqus.TsClient.Model
 
         public virtual string FullyQualifiedTsTypeName
         {
-            get { return string.Format("{0}.{1}", Name.Ns, Name.Name); }
+            get
+            {
+                return IsSystemType
+                    ? string.Format("{0}.{1}", Name.Ns, Name.Name)
+                    : string.Format("common.{0}.{1}", Name.Ns, Name.Name);
+            }
         }
 
         public TypeType TypeType
@@ -53,6 +60,7 @@ namespace d60.Cirqus.TsClient.Model
 
         public bool Optional { get; set; }
         public Type Type { get; protected set; }
+        public bool IsSystemType { get; private set; }
 
         public string AssemblyQualifiedName
         {
@@ -72,8 +80,8 @@ namespace d60.Cirqus.TsClient.Model
 
         public virtual string GetCode(ProxyGeneratorContext context)
         {
-            return string.Format(@"declare module {0} {{
-    interface {1}{2} {{
+            return string.Format(@"export declare module {0} {{
+    export interface {1}{2} {{
 {3}
     }}
 }}", Name.Ns, Name.Name, GetExtensionText(), FormatProperties());

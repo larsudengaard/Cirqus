@@ -35,11 +35,11 @@ namespace d60.Cirqus.TsClient.Model
 
             AddBuiltInType(new BuiltInTypeDef(typeof(object), "", "any"));
 
-            AddBuiltInType(new BuiltInTypeDef(typeof(Command), @"interface Command {
+            AddBuiltInType(new BuiltInTypeDef(typeof(Command), @"export interface Command {
     Meta?: any;
-}", "Command"));
-            AddBuiltInType(new BuiltInTypeDef(typeof(Metadata), "", "any") { Optional = true });
-            AddBuiltInType(new BuiltInTypeDef(typeof(Guid), "interface Guid {}", "Guid"));
+}", "Command", isSystemType: false));
+            AddBuiltInType(new BuiltInTypeDef(typeof(Metadata), "", "any", isSystemType: false) { Optional = true });
+            AddBuiltInType(new BuiltInTypeDef(typeof(Guid), "export interface Guid {}", "Guid", isSystemType: false));
 
             foreach (var type in types)
             {
@@ -120,14 +120,22 @@ namespace d60.Cirqus.TsClient.Model
                     throw new PrettyException(string.Format("Found multiple built-in-type configurations for type {0}", type));
 
                 var builtInTypeUsageConfiguration = _configuration.BuiltInTypeUsages.Single(x => x.IsForType(type));
-                var builtInTypeDef = new BuiltInTypeDef(type, "", builtInTypeUsageConfiguration.TsType);
+
+                var existingTypes = _types.Values
+                    .OfType<BuiltInTypeDef>()
+                    .Where(x => x.FullyQualifiedTsTypeName == builtInTypeUsageConfiguration.TsType)
+                    .ToList();
+
+                if (existingTypes.Any())
+                    return existingTypes.First();
+
+                var builtInTypeDef = new BuiltInTypeDef(type, "", builtInTypeUsageConfiguration.TsType, isSystemType: false);
                 AddBuiltInType(builtInTypeDef);
-                
                 return builtInTypeDef;
             }
 
             var typeDef = IsCommand(type)
-                ? new TypeDef(qualifiedClassName, GetTypeFor(typeof (Command)), TypeType.Command, type)
+                ? new TypeDef(qualifiedClassName, TypeType.Command, GetTypeFor(typeof (Command)), type)
                 : IsView(type)
                     ? new TypeDef(qualifiedClassName, TypeType.View)
                     : new TypeDef(qualifiedClassName, TypeType.Other);
@@ -144,7 +152,8 @@ namespace d60.Cirqus.TsClient.Model
             foreach (var property in properties)
             {
                 var propertyDef =
-                    new PropertyDef(GetOrCreateTypeDef(new QualifiedClassName(property.PropertyType), property.PropertyType),
+                    new PropertyDef(
+                        GetOrCreateTypeDef(new QualifiedClassName(property.PropertyType), property.PropertyType),
                         property.Name);
 
                 if (typeDef.TypeType == TypeType.Command && propertyDef.Name == "Meta") continue;
@@ -164,7 +173,7 @@ namespace d60.Cirqus.TsClient.Model
         {
             var builder = new StringBuilder();
 
-            builder.AppendLine(@"class CommandProcessor {
+            builder.AppendLine(@"export class CommandProcessor {
     private processCommandCallback: Function;
 
     constructor(processCommandCallback: Function) {
@@ -182,7 +191,7 @@ namespace d60.Cirqus.TsClient.Model
                 var commandType in
                     _types.Values.Where(t => t.TypeType == TypeType.Command).OrderBy(t => t.FullyQualifiedTsTypeName))
             {
-                builder.AppendLine(string.Format(@"    public {0}(command: {1}) : void {{
+                builder.AppendLine(string.Format(@"    public {0}(command: commands.{1}) : void {{
         command[""$type""] = ""{2}"";
         this.invokeCallback(command);
     }}", ToCamelCase(commandType), commandType.FullyQualifiedTsTypeName, commandType.AssemblyQualifiedName));
@@ -191,7 +200,7 @@ namespace d60.Cirqus.TsClient.Model
             }
 
 
-            builder.AppendLine(@"    private invokeCallback(command: Command) : void {
+            builder.AppendLine(@"    private invokeCallback(command: common.Command) : void {
         try {
             this.processCommandCallback(command);
         } catch(error) {
